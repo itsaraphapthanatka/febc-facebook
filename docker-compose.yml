@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: febc-facebook-db
+    environment:
+      POSTGRES_USER: febc
+      POSTGRES_PASSWORD: febc
+      POSTGRES_DB: febc_facebook
+    ports:
+      # Host port 5434 — 5432 is taken by a local PostgreSQL install, 5433 by another container
+      - "5434:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U febc -d febc_facebook"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  pgdata:
