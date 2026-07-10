@@ -7,8 +7,8 @@ services:
       POSTGRES_PASSWORD: febc
       POSTGRES_DB: febc_facebook
     ports:
-      # Host port 5434 — 5432 is taken by a local PostgreSQL install, 5433 by another container
-      - "5434:5432"
+      # Host port 5435 — 5432 is taken by a local PostgreSQL install, 5433 by another container
+      - "5435:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:

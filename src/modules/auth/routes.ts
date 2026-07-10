@@ -1,9 +1,10 @@
-import { randomBytes } from 'crypto';
+import { createHash, randomBytes, timingSafeEqual } from 'crypto';
 import { eq } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { db } from '../../db/client';
 import { fbUsers, pages } from '../../db/schema';
+import { env } from '../../env';
 import {
   buildLoginUrl,
   exchangeCodeForToken,
@@ -14,22 +15,16 @@ import {
 import { encrypt } from '../../lib/crypto';
 import { AppError } from '../../lib/errors';
 
-// Single-instance in-memory CSRF state store (state → expiry epoch ms)
-const pendingStates = new Map<string, number>();
-const STATE_TTL_MS = 10 * 60 * 1000;
+// CSRF state is double-submitted: sent to Facebook as ?state= and stored in a
+// signed HttpOnly cookie, so it survives server restarts and multiple instances.
+const STATE_COOKIE = 'fb_oauth_state';
+const STATE_TTL_SECONDS = 10 * 60;
 
-function issueState(): string {
-  const now = Date.now();
-  for (const [s, exp] of pendingStates) if (exp < now) pendingStates.delete(s);
-  const state = randomBytes(16).toString('hex');
-  pendingStates.set(state, now + STATE_TTL_MS);
-  return state;
-}
-
-function consumeState(state: string): boolean {
-  const exp = pendingStates.get(state);
-  pendingStates.delete(state);
-  return exp != null && exp >= Date.now();
+function statesMatch(a: string, b: string): boolean {
+  // Hash both sides so length differences don't leak
+  const ha = createHash('sha256').update(a).digest();
+  const hb = createHash('sha256').update(b).digest();
+  return timingSafeEqual(ha, hb);
 }
 
 const callbackQuerySchema = z.object({
@@ -95,8 +90,25 @@ export async function authRoutes(app: FastifyInstance) {
   app.get(
     '/auth/facebook',
     { config: { rateLimit: { max: 20, timeWindow: '1 minute' } } },
-    async (_req, reply) => {
-      return reply.redirect(buildLoginUrl(issueState()));
+    async (req, reply) => {
+      // The state cookie must live on the same host Facebook redirects back to
+      // (BASE_URL). If the flow starts elsewhere (e.g. localhost), hop there first.
+      const canonicalHost = new URL(env.BASE_URL).host;
+      if (req.host !== canonicalHost) {
+        req.log.info({ from: req.host, to: canonicalHost }, 'redirecting oauth start to BASE_URL host');
+        return reply.redirect(`${env.BASE_URL.replace(/\/$/, '')}/auth/facebook`);
+      }
+      const state = randomBytes(16).toString('hex');
+      reply.setCookie(STATE_COOKIE, state, {
+        signed: true,
+        httpOnly: true,
+        // 'lax' so the cookie is still sent on the top-level redirect back from facebook.com
+        sameSite: 'lax',
+        secure: env.NODE_ENV === 'production',
+        path: '/auth/facebook',
+        maxAge: STATE_TTL_SECONDS,
+      });
+      return reply.redirect(buildLoginUrl(state));
     },
   );
 
@@ -108,7 +120,22 @@ export async function authRoutes(app: FastifyInstance) {
       if (query.error) {
         throw new AppError(`Facebook login failed: ${query.error_description ?? query.error}`, 400);
       }
-      if (!query.code || !query.state || !consumeState(query.state)) {
+      const rawCookie = req.cookies[STATE_COOKIE];
+      const unsigned = rawCookie ? req.unsignCookie(rawCookie) : null;
+      reply.clearCookie(STATE_COOKIE, { path: '/auth/facebook' });
+      const cookieState = unsigned?.valid ? unsigned.value : null;
+      if (!query.code || !query.state || !cookieState || !statesMatch(cookieState, query.state)) {
+        req.log.warn(
+          {
+            hasCode: Boolean(query.code),
+            hasQueryState: Boolean(query.state),
+            hasCookie: rawCookie != null,
+            cookieSignatureValid: unsigned?.valid ?? false,
+            stateMatches:
+              cookieState && query.state ? statesMatch(cookieState, query.state) : false,
+          },
+          'oauth state validation failed',
+        );
         throw new AppError('Invalid or expired OAuth state', 400);
       }
 

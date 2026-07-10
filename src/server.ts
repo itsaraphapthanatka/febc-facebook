@@ -1,6 +1,7 @@
 import { createHash, timingSafeEqual } from 'crypto';
 import { join } from 'path';
 import Fastify, { type FastifyInstance } from 'fastify';
+import fastifyCookie from '@fastify/cookie';
 import helmet from '@fastify/helmet';
 import rateLimit from '@fastify/rate-limit';
 import fastifyStatic from '@fastify/static';
@@ -48,6 +49,9 @@ export async function buildServer(): Promise<FastifyInstance> {
     },
   });
   await app.register(rateLimit, { global: false });
+
+  // Signed cookies (OAuth CSRF state); ENCRYPTION_KEY doubles as the signing secret
+  await app.register(fastifyCookie, { secret: env.ENCRYPTION_KEY });
 
   // Image file uploads (sent directly to Facebook as multipart)
   await app.register(fastifyMultipart, {
