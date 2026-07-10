@@ -101,7 +101,7 @@ function showPreview(name, text) {
   openModal(`พรีวิว: ${name}`, body);
 }
 
-function openEditor(schedule, pages, onSaved) {
+export function openEditor(schedule, pages, onSaved) {
   const isEdit = !!schedule;
   const s = schedule || { name: '', cronExpression: '0 8 * * *', promptTemplate: '', topics: [], model: '', targetPageIds: [], isActive: true };
 

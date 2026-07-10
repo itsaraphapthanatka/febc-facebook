@@ -11,6 +11,8 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/db/migrate.ts",
     "db:push": "drizzle-kit push",
+    "fb:subscribe": "tsx scripts/subscribe-app-webhooks.ts",
+    "fb:check-page": "tsx scripts/check-page-subscription.ts",
     "test": "vitest run"
   },
   "engines": {

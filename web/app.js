@@ -3,6 +3,7 @@ import { el, esc, toast } from './ui.js';
 import { renderDashboard } from './views/dashboard.js';
 import { renderPages } from './views/pages.js';
 import { renderBroadcast } from './views/broadcast.js';
+import { renderCalendar } from './views/calendar.js';
 import { renderSchedules } from './views/schedules.js';
 import { renderHistory } from './views/history.js';
 
@@ -10,6 +11,7 @@ const NAV = [
   { id: 'dashboard', label: 'ภาพรวม', ico: '📊', render: renderDashboard },
   { id: 'pages', label: 'เพจ', ico: '📄', render: renderPages },
   { id: 'broadcast', label: 'Broadcast', ico: '📣', render: renderBroadcast },
+  { id: 'calendar', label: 'ปฏิทิน', ico: '📅', render: renderCalendar },
   { id: 'schedules', label: 'ตั้งเวลาโพสต์ (AI)', ico: '🤖', render: renderSchedules },
   { id: 'history', label: 'ประวัติ', ico: '🕑', render: renderHistory },
 ];

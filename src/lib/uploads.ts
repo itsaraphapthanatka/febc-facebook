@@ -39,6 +39,16 @@ export async function readUpload(name: string): Promise<Buffer> {
   return fs.readFile(join(UPLOAD_DIR, name));
 }
 
+/** True if an uploaded file still exists (they are pruned after ~24h). */
+export async function uploadExists(name: string): Promise<boolean> {
+  try {
+    await fs.access(join(UPLOAD_DIR, name));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /** Deletes upload files older than maxAgeMs. Returns count removed. */
 export async function cleanupOldUploads(maxAgeMs: number): Promise<number> {
   let removed = 0;

@@ -1,5 +1,5 @@
 import { Endpoints } from '../api.js';
-import { el, esc, toast, statusBadge, fmtDate, loadingView } from '../ui.js';
+import { el, esc, toast, statusBadge, fmtDate, loadingView, bindAsync } from '../ui.js';
 
 export async function renderHistory(view) {
   view.innerHTML = '';
@@ -65,16 +65,33 @@ async function loadPosts(container) {
   }
 }
 
+function syncBar(container) {
+  const bar = el(`<div class="btn-row" style="justify-content:flex-end;margin-bottom:14px">
+    <button class="btn" data-sync>🔄 Sync ผู้ทักแชท</button>
+  </div>`);
+  bindAsync(bar.querySelector('[data-sync]'), async () => {
+    const res = await Endpoints.syncRecipients();
+    const errNote = res.errors?.length ? ` (มีข้อผิดพลาด ${res.errors.length} เพจ)` : '';
+    toast(`ซิงค์แล้ว — พบผู้ทักแชท ${res.recipients} ราย จาก ${res.pagesSynced} เพจ${errNote}`, res.errors?.length ? 'err' : 'ok');
+    loadRecipients(container);
+  });
+  return bar;
+}
+
 async function loadRecipients(container) {
-  container.appendChild(loadingView());
+  container.innerHTML = '';
+  container.appendChild(syncBar(container));
+  const listBox = el('<div></div>');
+  container.appendChild(listBox);
+  listBox.appendChild(loadingView());
   try {
     const rows = await Endpoints.recipients('?limit=200');
-    container.innerHTML = '';
+    listBox.innerHTML = '';
     if (!rows.length) {
-      container.appendChild(el(`<div class="card"><div class="empty">
+      listBox.appendChild(el(`<div class="card"><div class="empty">
         <div class="big">💬</div>
         <p>ยังไม่มีผู้ทักแชท</p>
-        <div class="muted">เมื่อมีคนทักแชทเพจที่สมัคร Webhook แล้ว รายชื่อจะปรากฏที่นี่</div>
+        <div class="muted">กด “Sync ผู้ทักแชท” เพื่อดึงจากกล่องข้อความของเพจ หรือรอ Webhook เมื่อมีคนทักเข้ามา</div>
       </div></div>`));
       return;
     }
@@ -98,9 +115,9 @@ async function loadRecipients(container) {
       </tr>`));
     }
     card.appendChild(table);
-    container.appendChild(card);
+    listBox.appendChild(card);
   } catch (err) {
     toast(err.message, 'err');
-    container.innerHTML = `<div class="card"><div class="empty">${esc(err.message)}</div></div>`;
+    listBox.innerHTML = `<div class="card"><div class="empty">${esc(err.message)}</div></div>`;
   }
 }

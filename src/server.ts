@@ -12,6 +12,7 @@ import { ZodError } from 'zod';
 import { db } from './db/client';
 import { env } from './env';
 import { AppError, FacebookApiError } from './lib/errors';
+import { aiRoutes } from './modules/ai/routes';
 import { authRoutes } from './modules/auth/routes';
 import { broadcastRoutes } from './modules/broadcast/routes';
 import { historyRoutes } from './modules/history/routes';
@@ -116,6 +117,7 @@ export async function buildServer(): Promise<FastifyInstance> {
   await app.register(authRoutes);
   await app.register(pagesRoutes);
   await app.register(broadcastRoutes);
+  await app.register(aiRoutes);
   await app.register(scheduleRoutes);
   await app.register(historyRoutes);
   await app.register(webhookRoutes);

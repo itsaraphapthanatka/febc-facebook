@@ -6,6 +6,6 @@ export default defineConfig({
   schema: './src/db/schema.ts',
   out: './src/db/migrations',
   dbCredentials: {
-    url: process.env.DATABASE_URL ?? 'postgres://febc:febc@localhost:5434/febc_facebook',
+    url: process.env.DATABASE_URL ?? 'postgres://febc:febc@localhost:5435/febc_facebook',
   },
 });

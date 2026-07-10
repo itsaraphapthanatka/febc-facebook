@@ -26,6 +26,8 @@ const envSchema = z.object({
   // Any OpenAI-compatible endpoint (e.g. a self-hosted gateway); empty = api.openai.com
   OPENAI_BASE_URL: z.string().url().optional(),
   OPENAI_MODEL: z.string().default('gpt-4o-mini'),
+  // Image-generation model (OpenAI /images endpoint). Only used by the AI image button.
+  OPENAI_IMAGE_MODEL: z.string().optional(),
 
   SCHEDULER_TIMEZONE: z.string().default('Asia/Bangkok'),
 });

@@ -35,7 +35,13 @@ export const pages = pgTable('pages', {
 });
 
 export type BroadcastKind = 'feed' | 'messenger';
-export type BroadcastStatus = 'pending' | 'running' | 'completed' | 'partial' | 'failed';
+export type BroadcastStatus =
+  | 'scheduled'
+  | 'pending'
+  | 'running'
+  | 'completed'
+  | 'partial'
+  | 'failed';
 
 export const broadcasts = pgTable('broadcasts', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -45,6 +51,12 @@ export const broadcasts = pgTable('broadcasts', {
   imageUrl: text('image_url'),
   messageTag: text('message_tag'),
   status: text('status').$type<BroadcastStatus>().notNull().default('pending'),
+  // Set for scheduled broadcasts; targets are materialized at dispatch time, not creation,
+  // so the Messenger 24h window is evaluated when the broadcast actually sends.
+  scheduledAt: timestamp('scheduled_at', { withTimezone: true }),
+  // Recipient/audience parameters kept so a scheduled broadcast can materialize targets at dispatch.
+  pageIds: uuid('page_ids').array(),
+  onlyWithin24h: boolean('only_within_24h'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 

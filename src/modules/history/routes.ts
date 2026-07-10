@@ -3,6 +3,7 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { db } from '../../db/client';
 import { messengerRecipients, posts } from '../../db/schema';
+import { syncRecipientsFromConversations } from '../webhooks/service';
 
 const postsQuerySchema = z.object({
   pageId: z.string().uuid().optional(),
@@ -37,5 +38,10 @@ export async function historyRoutes(app: FastifyInstance) {
       .where(q.pageId ? eq(messengerRecipients.pageId, q.pageId) : undefined)
       .orderBy(desc(messengerRecipients.lastInteractionAt))
       .limit(q.limit);
+  });
+
+  // Pull recipients from the Graph Conversations API (backfills people webhooks missed).
+  app.post('/api/messenger/sync', async () => {
+    return syncRecipientsFromConversations();
   });
 }

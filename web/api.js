@@ -81,16 +81,31 @@ export const Endpoints = {
   setProfilePictureFile: (id, file) => api.postForm(`/api/pages/${id}/profile-picture`, fileForm(file)),
 
   broadcastFeed: (b) => api.post('/api/broadcasts/feed', b),
-  broadcastFeedFile: (message, pageIds, file) => {
+  broadcastFeedFile: (message, pageIds, file, opts = {}) => {
     const fd = new FormData();
     fd.set('message', message);
     for (const id of pageIds) fd.append('pageIds', id);
     fd.set('image', file);
+    if (opts.scheduledAt) fd.set('scheduledAt', opts.scheduledAt);
     return api.postForm('/api/broadcasts/feed', fd);
   },
   broadcastMessenger: (b) => api.post('/api/broadcasts/messenger', b),
+  broadcastMessengerFile: (message, pageIds, file, opts = {}) => {
+    const fd = new FormData();
+    fd.set('message', message);
+    for (const id of pageIds) fd.append('pageIds', id);
+    fd.set('image', file);
+    if (opts.messageTag) fd.set('messageTag', opts.messageTag);
+    if (opts.onlyWithin24h !== undefined) fd.set('onlyWithin24h', String(opts.onlyWithin24h));
+    if (opts.scheduledAt) fd.set('scheduledAt', opts.scheduledAt);
+    return api.postForm('/api/broadcasts/messenger', fd);
+  },
   broadcasts: () => api.get('/api/broadcasts'),
+  scheduledBroadcasts: () => api.get('/api/broadcasts?status=scheduled'),
   broadcast: (id) => api.get(`/api/broadcasts/${id}`),
+  updateBroadcast: (id, body) => api.patch(`/api/broadcasts/${id}`, body),
+  resendBroadcast: (id) => api.post(`/api/broadcasts/${id}/resend`),
+  cancelBroadcast: (id) => api.del(`/api/broadcasts/${id}`),
 
   schedules: () => api.get('/api/schedules'),
   schedule: (id) => api.get(`/api/schedules/${id}`),
@@ -102,4 +117,8 @@ export const Endpoints = {
 
   posts: (q) => api.get('/api/posts' + (q || '')),
   recipients: (q) => api.get('/api/messenger/recipients' + (q || '')),
+  syncRecipients: () => api.post('/api/messenger/sync'),
+
+  aiCompose: (body) => api.post('/api/ai/compose', body),
+  aiImage: (body) => api.post('/api/ai/image', body),
 };

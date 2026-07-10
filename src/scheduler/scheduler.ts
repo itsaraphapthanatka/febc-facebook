@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm';
 import { db } from '../db/client';
 import { schedules } from '../db/schema';
 import { env } from '../env';
+import { dispatchDueBroadcasts } from '../modules/broadcast/service';
 import { runScheduleOnce } from '../modules/schedules/service';
 import { runSweeper } from './sweeper';
 
@@ -13,6 +14,7 @@ interface SchedulerLogger {
 
 const tasks = new Map<string, ScheduledTask>();
 let sweeperTask: ScheduledTask | null = null;
+let dispatchTask: ScheduledTask | null = null;
 let log: SchedulerLogger = { info: () => {}, error: () => {} };
 
 export function isValidCron(expression: string): boolean {
@@ -47,6 +49,17 @@ export async function startScheduler(logger: SchedulerLogger): Promise<void> {
     },
     { timezone: env.SCHEDULER_TIMEZONE },
   );
+
+  // Fire scheduled broadcasts whose time has come (minute granularity).
+  dispatchTask = cron.schedule(
+    '* * * * *',
+    () => {
+      dispatchDueBroadcasts(log).catch((err) => log.error({ err }, 'broadcast dispatch failed'));
+    },
+    { timezone: env.SCHEDULER_TIMEZONE },
+  );
+  // Catch up on any broadcasts that came due while the process was down.
+  dispatchDueBroadcasts(log).catch((err) => log.error({ err }, 'broadcast dispatch failed'));
 }
 
 /** Re-syncs one schedule's cron task after a create/update/delete/toggle. */
@@ -62,4 +75,6 @@ export function stopScheduler(): void {
   tasks.clear();
   sweeperTask?.stop();
   sweeperTask = null;
+  dispatchTask?.stop();
+  dispatchTask = null;
 }

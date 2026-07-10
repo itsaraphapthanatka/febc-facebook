@@ -66,19 +66,24 @@ export interface UploadFile {
   mimetype: string;
 }
 
-/** Multipart POST — sends a binary file directly to Facebook (avoids Facebook having to fetch a URL). */
+/**
+ * Multipart POST — sends a binary file directly to Facebook (avoids Facebook having to fetch a URL).
+ * `fileField` is the form field the binary goes under: `source` for /photos (default),
+ * `filedata` for the Messenger attachment upload API.
+ */
 export async function graphPostForm<T>(
   path: string,
   accessToken: string,
   fields: Record<string, string> = {},
   file?: UploadFile,
+  fileField = 'source',
 ): Promise<T> {
   const form = new FormData();
   form.set('access_token', accessToken);
   form.set('appsecret_proof', appSecretProof(accessToken));
   for (const [k, v] of Object.entries(fields)) form.set(k, v);
   if (file) {
-    form.set('source', new Blob([file.buffer], { type: file.mimetype }), file.filename);
+    form.set(fileField, new Blob([file.buffer], { type: file.mimetype }), file.filename);
   }
   const url = `${GRAPH_BASE}/${env.FB_GRAPH_VERSION}/${path.replace(/^\//, '')}`;
   const res = await fetch(url, { method: 'POST', body: form });
