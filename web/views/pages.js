@@ -1,4 +1,4 @@
-import { Endpoints } from '../api.js';
+import { Endpoints, mountPath } from '../api.js';
 import { el, esc, toast, bindAsync, confirmDialog, openModal, loadingView, createDropzone } from '../ui.js';
 
 export async function renderPages(view) {
@@ -7,7 +7,7 @@ export async function renderPages(view) {
     <div><h1>เพจ</h1><div class="sub">เพจ Facebook ที่เชื่อมต่อกับระบบ</div></div>
     <div class="btn-row">
       <button class="btn" data-refresh>🔄 ดึงเพจใหม่</button>
-      <a class="btn primary" href="/auth/facebook">➕ เชื่อมต่อเพจ</a>
+      <a class="btn primary" href="${mountPath('/auth/facebook')}">➕ เชื่อมต่อเพจ</a>
     </div>
   </div>`);
   view.appendChild(head);
@@ -27,7 +27,7 @@ export async function renderPages(view) {
     view.appendChild(el(`<div class="card"><div class="empty">
       <div class="big">📄</div>
       <p>ยังไม่มีเพจที่เชื่อมต่อ</p>
-      <a class="btn primary" href="/auth/facebook" style="margin-top:8px">เชื่อมต่อเพจแรก</a>
+      <a class="btn primary" href="${mountPath('/auth/facebook')}" style="margin-top:8px">เชื่อมต่อเพจแรก</a>
     </div></div>`));
     return;
   }

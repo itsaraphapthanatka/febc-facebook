@@ -1,4 +1,4 @@
-import { Endpoints, getKey, setKey, clearKey, ApiError } from './api.js';
+import { Endpoints, getKey, setKey, clearKey, ApiError, MOUNT } from './api.js';
 import { el, esc, toast } from './ui.js';
 import { renderDashboard } from './views/dashboard.js';
 import { renderPages } from './views/pages.js';
@@ -116,7 +116,7 @@ function checkConnectedFlag() {
   if (m) {
     const n = Number(m[1]);
     setTimeout(() => toast(n > 0 ? `เชื่อมต่อสำเร็จ ${n} เพจ` : 'เข้าสู่ระบบ Facebook แล้ว แต่ยังไม่ได้เลือกเพจ', n > 0 ? 'ok' : 'err'), 300);
-    history.replaceState(null, '', '/' + location.hash);
+    history.replaceState(null, '', MOUNT + '/' + location.hash);
   }
 }
 

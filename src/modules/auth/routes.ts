@@ -20,6 +20,14 @@ import { AppError } from '../../lib/errors';
 const STATE_COOKIE = 'fb_oauth_state';
 const STATE_TTL_SECONDS = 10 * 60;
 
+// When the app is mounted under a path prefix (e.g. BASE_URL=".../facebook"), a
+// reverse proxy strips that prefix before the request reaches us — but the browser
+// still sees the external path. Cookie Path and redirect targets must therefore use
+// the *external* prefix, or the state cookie won't be returned on the callback and
+// the post-connect redirect would escape the mount. Empty string when mounted at root.
+const MOUNT_PREFIX = new URL(env.BASE_URL).pathname.replace(/\/$/, '');
+const STATE_COOKIE_PATH = `${MOUNT_PREFIX}/auth/facebook`;
+
 function statesMatch(a: string, b: string): boolean {
   // Hash both sides so length differences don't leak
   const ha = createHash('sha256').update(a).digest();
@@ -105,7 +113,7 @@ export async function authRoutes(app: FastifyInstance) {
         // 'lax' so the cookie is still sent on the top-level redirect back from facebook.com
         sameSite: 'lax',
         secure: env.NODE_ENV === 'production',
-        path: '/auth/facebook',
+        path: STATE_COOKIE_PATH,
         maxAge: STATE_TTL_SECONDS,
       });
       return reply.redirect(buildLoginUrl(state));
@@ -122,7 +130,7 @@ export async function authRoutes(app: FastifyInstance) {
       }
       const rawCookie = req.cookies[STATE_COOKIE];
       const unsigned = rawCookie ? req.unsignCookie(rawCookie) : null;
-      reply.clearCookie(STATE_COOKIE, { path: '/auth/facebook' });
+      reply.clearCookie(STATE_COOKIE, { path: STATE_COOKIE_PATH });
       const cookieState = unsigned?.valid ? unsigned.value : null;
       if (!query.code || !query.state || !cookieState || !statesMatch(cookieState, query.state)) {
         req.log.warn(
@@ -143,8 +151,8 @@ export async function authRoutes(app: FastifyInstance) {
       const longLived = await exchangeForLongLivedToken(shortLived.access_token);
       const result = await syncUserAndPages(longLived.access_token, longLived.expires_in);
 
-      // Return to the dashboard Pages view with a success flag
-      return reply.redirect(`/?connected=${result.pages.length}#/pages`);
+      // Return to the dashboard Pages view with a success flag (under the mount prefix)
+      return reply.redirect(`${MOUNT_PREFIX}/?connected=${result.pages.length}#/pages`);
     },
   );
 }

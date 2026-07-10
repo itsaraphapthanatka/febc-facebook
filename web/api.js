@@ -2,6 +2,17 @@
 
 const KEY_STORAGE = 'febc_admin_key';
 
+// Mount prefix — the app may be served under a path (e.g. https://host/facebook/)
+// behind a reverse proxy, or at root in dev. Derive it from this module's own URL
+// so absolute-looking API paths ("/api/...") resolve against the correct base.
+// e.g. served as ".../facebook/api.js" -> "/facebook"; served at "/api.js" -> "".
+export const MOUNT = new URL('.', import.meta.url).pathname.replace(/\/$/, '');
+
+/** Prefix a root-absolute app path with the mount prefix; leave other URLs as-is. */
+export function mountPath(path) {
+  return path.startsWith('/') ? MOUNT + path : path;
+}
+
 export function getKey() {
   return localStorage.getItem(KEY_STORAGE) || '';
 }
@@ -45,12 +56,12 @@ async function request(method, path, body) {
     opts.headers['Content-Type'] = 'application/json';
     opts.body = JSON.stringify(body);
   }
-  return handleResponse(await fetch(path, opts));
+  return handleResponse(await fetch(mountPath(path), opts));
 }
 
 /** Multipart POST — let the browser set the content-type/boundary. */
 async function requestForm(path, formData) {
-  const res = await fetch(path, {
+  const res = await fetch(mountPath(path), {
     method: 'POST',
     headers: { Authorization: `Bearer ${getKey()}` },
     body: formData,
