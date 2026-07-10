@@ -16,6 +16,7 @@ import { aiRoutes } from './modules/ai/routes';
 import { authRoutes } from './modules/auth/routes';
 import { broadcastRoutes } from './modules/broadcast/routes';
 import { historyRoutes } from './modules/history/routes';
+import { legalRoutes } from './modules/legal/routes';
 import { pagesRoutes } from './modules/pages/routes';
 import { scheduleRoutes } from './modules/schedules/routes';
 import { statsRoute } from './modules/stats/routes';
@@ -121,6 +122,7 @@ export async function buildServer(): Promise<FastifyInstance> {
   await app.register(scheduleRoutes);
   await app.register(historyRoutes);
   await app.register(webhookRoutes);
+  await app.register(legalRoutes);
 
   return app;
 }
