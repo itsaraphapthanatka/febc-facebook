@@ -1,5 +1,6 @@
 import { Endpoints } from '../api.js';
-import { el, esc, toast, statusBadge, fmtDate, bindAsync, confirmDialog, openModal, loadingView } from '../ui.js';
+import { el, esc, toast, statusBadge, fmtDate, bindAsync, confirmDialog, openModal, loadingView, createDropzone } from '../ui.js';
+import { aiImageButton } from './broadcast.js';
 
 const CRON_PRESETS = [
   { label: 'ทุกวัน 08:00', value: '0 8 * * *' },
@@ -132,9 +133,19 @@ export function openEditor(schedule, pages, onSaved) {
       <input type="text" data-model value="${esc(s.model || '')}" placeholder="เช่น gemma-4-12b" />
     </div>
     <div class="field">
+      <label>รูปภาพ (ไม่บังคับ)</label>
+      <div class="desc">แนบรูปกับโพสต์ทุกครั้งที่รัน — อัปโหลด, ให้ AI สร้าง, หรือวาง URL รูปสาธารณะ</div>
+      <div data-image-dz></div>
+      <div data-image-note class="muted" style="margin-top:8px" hidden>แนบรูปที่อัปโหลดไว้แล้ว <button type="button" class="btn sm danger" data-remove-img style="margin-left:6px">ลบรูป</button></div>
+      <input type="url" data-image-url placeholder="หรือวาง URL รูป https://…" style="margin-top:10px" />
+    </div>
+    <div class="field">
       <label>เพจปลายทาง</label>
       <div data-pages></div>
     </div>
+    <label style="display:flex;align-items:center;gap:8px;font-weight:500;margin-bottom:14px">
+      <input type="checkbox" data-also-msg ${s.alsoMessenger ? 'checked' : ''} style="width:auto" /> ส่งเข้า Messenger ด้วย (ถึงผู้ที่ทักใน 24 ชม.)
+    </label>
     <label style="display:flex;align-items:center;gap:8px;font-weight:500">
       <input type="checkbox" data-active ${s.isActive ? 'checked' : ''} style="width:auto" /> เปิดใช้งานตารางนี้
     </label>
@@ -147,6 +158,23 @@ export function openEditor(schedule, pages, onSaved) {
     b.addEventListener('click', () => { body.querySelector('[data-cron]').value = p.value; });
     presetRow.appendChild(b);
   }
+
+  // image picker: dropzone + AI button + URL, with handling for an already-attached image
+  const existingImage = s.imageUrl || '';
+  const isLocalExisting = existingImage.startsWith('local:');
+  let keepLocal = isLocalExisting;
+  const urlInput = body.querySelector('[data-image-url]');
+  urlInput.value = existingImage && !isLocalExisting ? existingImage : '';
+  const note = body.querySelector('[data-image-note]');
+  note.hidden = !isLocalExisting;
+
+  const dz = createDropzone({ previewClass: 'cover', onFile: (f) => { if (f) urlInput.value = ''; } });
+  const dzBox = body.querySelector('[data-image-dz]');
+  dzBox.appendChild(dz.el);
+  const aiRow = el('<div class="ai-actions"></div>');
+  aiRow.appendChild(aiImageButton(dz));
+  dzBox.appendChild(aiRow);
+  note.querySelector('[data-remove-img]').addEventListener('click', () => { keepLocal = false; note.hidden = true; });
 
   // page checklist
   const box = el('<div class="checklist"></div>');
@@ -171,6 +199,7 @@ export function openEditor(schedule, pages, onSaved) {
       promptTemplate: body.querySelector('[data-prompt]').value.trim(),
       topics: body.querySelector('[data-topics]').value.split('\n').map((t) => t.trim()).filter(Boolean),
       targetPageIds: [...box.querySelectorAll('input:checked')].map((i) => i.value),
+      alsoMessenger: body.querySelector('[data-also-msg]').checked,
       isActive: body.querySelector('[data-active]').checked,
     };
     const model = body.querySelector('[data-model]').value.trim();
@@ -179,6 +208,13 @@ export function openEditor(schedule, pages, onSaved) {
     if (!payload.name) return toast('กรุณาใส่ชื่อ', 'err');
     if (!payload.promptTemplate) return toast('กรุณาใส่ Prompt', 'err');
     if (!payload.targetPageIds.length) return toast('เลือกอย่างน้อย 1 เพจ', 'err');
+
+    // Resolve the attached image: new upload/AI file → new URL → keep existing → clear.
+    const file = dz.getFile();
+    const urlVal = urlInput.value.trim();
+    if (file) payload.imageUrl = (await Endpoints.uploadScheduleImage(file)).imageUrl;
+    else if (urlVal) payload.imageUrl = urlVal;
+    else payload.imageUrl = keepLocal ? existingImage : null;
 
     if (isEdit) await Endpoints.updateSchedule(schedule.id, payload);
     else await Endpoints.createSchedule(payload);

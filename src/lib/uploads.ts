@@ -35,6 +35,17 @@ export async function saveUpload(buffer: Buffer, mimetype: string): Promise<stri
   return name;
 }
 
+// Recurring schedules reuse their image across many runs, so their uploads live in a
+// subfolder that the 24h temp-file cleanup never touches. Returns a path relative to UPLOAD_DIR.
+const SCHEDULE_SUBDIR = 'schedules';
+
+export async function saveScheduleUpload(buffer: Buffer, mimetype: string): Promise<string> {
+  await fs.mkdir(join(UPLOAD_DIR, SCHEDULE_SUBDIR), { recursive: true });
+  const name = randomBytes(16).toString('hex') + extFromMime(mimetype);
+  await fs.writeFile(join(UPLOAD_DIR, SCHEDULE_SUBDIR, name), buffer);
+  return `${SCHEDULE_SUBDIR}/${name}`;
+}
+
 export async function readUpload(name: string): Promise<Buffer> {
   return fs.readFile(join(UPLOAD_DIR, name));
 }
@@ -63,7 +74,8 @@ export async function cleanupOldUploads(maxAgeMs: number): Promise<number> {
     const full = join(UPLOAD_DIR, name);
     try {
       const stat = await fs.stat(full);
-      if (stat.mtimeMs < cutoff) {
+      // Only prune regular temp files — leave the `schedules/` subfolder (permanent images) alone.
+      if (stat.isFile() && stat.mtimeMs < cutoff) {
         await fs.unlink(full);
         removed++;
       }

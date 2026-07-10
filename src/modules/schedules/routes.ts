@@ -5,6 +5,8 @@ import { db } from '../../db/client';
 import { schedules } from '../../db/schema';
 import { generatePost } from '../../openai/generator';
 import { AppError } from '../../lib/errors';
+import { isAllowedImage, saveScheduleUpload } from '../../lib/uploads';
+import { LOCAL_IMAGE_PREFIX } from '../broadcast/service';
 import { isValidCron, reloadSchedule } from '../../scheduler/scheduler';
 import { getScheduleWithRuns, runScheduleOnce } from './service';
 
@@ -17,6 +19,8 @@ const createSchema = z.object({
   topics: z.array(z.string().min(1)).default([]),
   model: z.string().optional(),
   targetPageIds: z.array(z.string().uuid()).min(1),
+  imageUrl: z.string().max(1000).nullable().optional(),
+  alsoMessenger: z.boolean().default(false),
   isActive: z.boolean().default(true),
 });
 
@@ -30,6 +34,18 @@ export async function scheduleRoutes(app: FastifyInstance) {
     const [created] = await db.insert(schedules).values(body).returning();
     await reloadSchedule(created.id);
     return reply.code(201).send(created);
+  });
+
+  // Upload a permanent image for a schedule (not pruned like broadcast temp uploads).
+  app.post('/api/schedules/image', async (req) => {
+    const file = await req.file();
+    if (!file) throw new AppError('ไม่พบไฟล์รูป', 400);
+    if (!isAllowedImage(file.mimetype)) {
+      throw new AppError('รองรับเฉพาะไฟล์รูปภาพ (jpg, png, gif, webp)', 400);
+    }
+    const buffer = await file.toBuffer();
+    const stored = await saveScheduleUpload(buffer, file.mimetype);
+    return { imageUrl: LOCAL_IMAGE_PREFIX + stored };
   });
 
   app.get('/api/schedules', async () => {

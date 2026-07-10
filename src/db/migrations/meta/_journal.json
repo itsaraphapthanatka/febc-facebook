@@ -15,6 +15,13 @@
       "when": 1783655815020,
       "tag": "0001_dusty_the_call",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1783665199232,
+      "tag": "0002_condemned_drax",
+      "breakpoints": true
     }
   ]
 }

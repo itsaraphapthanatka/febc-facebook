@@ -129,7 +129,7 @@ function aiComposeButton(composer, channel) {
 }
 
 /** "สร้างรูปด้วย AI" — generates an image, previews it, and drops it into the given dropzone. */
-function aiImageButton(dz) {
+export function aiImageButton(dz) {
   const btn = el('<button type="button" class="btn sm">🎨 สร้างรูปด้วย AI</button>');
   btn.addEventListener('click', () => {
     const body = el(`<div>

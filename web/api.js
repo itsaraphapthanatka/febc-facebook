@@ -110,6 +110,11 @@ export const Endpoints = {
   schedules: () => api.get('/api/schedules'),
   schedule: (id) => api.get(`/api/schedules/${id}`),
   createSchedule: (b) => api.post('/api/schedules', b),
+  uploadScheduleImage: (file) => {
+    const fd = new FormData();
+    fd.set('image', file);
+    return api.postForm('/api/schedules/image', fd);
+  },
   updateSchedule: (id, b) => api.patch(`/api/schedules/${id}`, b),
   deleteSchedule: (id) => api.del(`/api/schedules/${id}`),
   runSchedule: (id) => api.post(`/api/schedules/${id}/run`),

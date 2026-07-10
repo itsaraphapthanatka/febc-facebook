@@ -3,8 +3,32 @@ import { db } from '../../db/client';
 import { pages, posts, scheduleRuns, schedules } from '../../db/schema';
 import { generatePost } from '../../openai/generator';
 import { decrypt } from '../../lib/crypto';
-import { publishPost } from '../../facebook/pages';
+import { publishPost, uploadPagePhoto } from '../../facebook/pages';
 import { errorMessage, isRetryableError } from '../../lib/errors';
+import { mimeFromName, readUpload } from '../../lib/uploads';
+import { createMessengerBroadcast, LOCAL_IMAGE_PREFIX } from '../broadcast/service';
+
+/** Publishes a scheduled feed post, attaching the schedule's image (uploaded file or public URL). */
+async function publishScheduledPost(
+  fbPageId: string,
+  token: string,
+  message: string,
+  imageUrl: string | null,
+): Promise<string> {
+  if (imageUrl?.startsWith(LOCAL_IMAGE_PREFIX)) {
+    const path = imageUrl.slice(LOCAL_IMAGE_PREFIX.length);
+    const buffer = await readUpload(path);
+    const filename = path.split('/').pop() ?? path;
+    const res = await uploadPagePhoto(
+      fbPageId,
+      token,
+      { buffer, filename, mimetype: mimeFromName(filename) },
+      { published: true, caption: message },
+    );
+    return res.post_id ?? res.id;
+  }
+  return publishPost(fbPageId, token, { message, imageUrl: imageUrl ?? undefined });
+}
 
 const GENERATION_RETRY_DELAY_MS = 30_000;
 
@@ -78,9 +102,12 @@ export async function runScheduleOnce(scheduleId: string): Promise<void> {
   let published = 0;
   for (const page of targetPages) {
     try {
-      const fbPostId = await publishPost(page.fbPageId, decrypt(page.pageAccessTokenEnc), {
-        message: generated.content,
-      });
+      const fbPostId = await publishScheduledPost(
+        page.fbPageId,
+        decrypt(page.pageAccessTokenEnc),
+        generated.content,
+        schedule.imageUrl,
+      );
       await db.insert(posts).values({
         pageId: page.id,
         fbPostId,
@@ -102,6 +129,23 @@ export async function runScheduleOnce(scheduleId: string): Promise<void> {
         error: errorMessage(err),
         attempts: isRetryableError(err) ? 1 : 3,
       });
+    }
+  }
+
+  // Optionally fan the same content out to Messenger recipients (within the 24h window).
+  if (schedule.alsoMessenger && targetPages.length > 0) {
+    try {
+      await createMessengerBroadcast(
+        {
+          message: generated.content,
+          imageUrl: schedule.imageUrl ?? undefined,
+          pageIds: targetPages.map((p) => p.id),
+        },
+        console,
+      );
+    } catch (err) {
+      // No eligible recipients (or other issues) shouldn't fail the feed run — just note it.
+      console.error({ err: errorMessage(err), scheduleId }, 'scheduled messenger send skipped');
     }
   }
 

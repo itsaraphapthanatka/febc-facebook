@@ -86,6 +86,10 @@ export const schedules = pgTable('schedules', {
   topics: jsonb('topics').$type<string[]>().notNull().default([]),
   model: text('model'),
   targetPageIds: uuid('target_page_ids').array().notNull(),
+  // Optional image attached to every generated post: public URL or `local:schedules/<file>`.
+  imageUrl: text('image_url'),
+  // When true, each run also sends the generated content to the pages' Messenger recipients.
+  alsoMessenger: boolean('also_messenger').notNull().default(false),
   isActive: boolean('is_active').notNull().default(true),
   lastRunAt: timestamp('last_run_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
