@@ -5,6 +5,7 @@ import { db } from '../../db/client';
 import { fbUsers, pages } from '../../db/schema';
 import type { UploadFile } from '../../facebook/graphClient';
 import {
+  fetchPageImages,
   setCoverFromPhotoId,
   setCoverPhoto,
   setProfileFromPhotoId,
@@ -93,6 +94,13 @@ export async function pagesRoutes(app: FastifyInstance) {
       .set({ webhookSubscribed: false, updatedAt: new Date() })
       .where(eq(pages.id, id));
     return { subscribed: false };
+  });
+
+  // Current cover + profile picture straight from the Graph API (shown in the change-image modal)
+  app.get('/api/pages/:id/images', async (req) => {
+    const { id } = idParamSchema.parse(req.params);
+    const page = await getPageWithToken(id);
+    return fetchPageImages(page.fbPageId, page.pageAccessToken);
   });
 
   // Accepts either a multipart file upload or a JSON { imageUrl }

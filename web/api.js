@@ -86,6 +86,7 @@ export const Endpoints = {
   unsubscribePage: (id) => api.del(`/api/pages/${id}/subscribe`),
   setPageActive: (id, isActive) => api.patch(`/api/pages/${id}`, { isActive }),
   deletePage: (id) => api.del(`/api/pages/${id}`),
+  pageImages: (id) => api.get(`/api/pages/${id}/images`),
   setCover: (id, imageUrl) => api.post(`/api/pages/${id}/cover`, { imageUrl }),
   setProfilePicture: (id, imageUrl) => api.post(`/api/pages/${id}/profile-picture`, { imageUrl }),
   setCoverFile: (id, file) => api.postForm(`/api/pages/${id}/cover`, fileForm(file)),

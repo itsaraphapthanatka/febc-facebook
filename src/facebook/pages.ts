@@ -1,4 +1,4 @@
-import { graphDelete, graphPost, graphPostForm, type UploadFile } from './graphClient';
+import { graphDelete, graphGet, graphPost, graphPostForm, type UploadFile } from './graphClient';
 
 export interface PublishInput {
   message: string;
@@ -80,6 +80,25 @@ export async function setCoverPhoto(
   });
   await graphPost(`${fbPageId}`, pageToken, { cover: photo.id });
   return photo.id;
+}
+
+export interface PageImages {
+  coverUrl: string | null;
+  profilePictureUrl: string | null;
+}
+
+/** Fetches the page's current cover photo and profile picture URLs. */
+export async function fetchPageImages(fbPageId: string, pageToken: string): Promise<PageImages> {
+  const res = await graphGet<{
+    cover?: { source?: string };
+    picture?: { data?: { url?: string } };
+  }>(fbPageId, pageToken, {
+    fields: 'cover,picture.width(320).height(320)',
+  });
+  return {
+    coverUrl: res.cover?.source ?? null,
+    profilePictureUrl: res.picture?.data?.url ?? null,
+  };
 }
 
 export const WEBHOOK_FIELDS = 'feed,messages';

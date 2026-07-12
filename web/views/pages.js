@@ -91,6 +91,9 @@ function openImageModal(page) {
   const section = (key, title) => `
     <div class="field">
       <label>${title}</label>
+      <div class="desc" style="margin:0 0 4px">รูปปัจจุบัน</div>
+      <div data-${key}-current><span class="muted">กำลังโหลด…</span></div>
+      <div class="desc" style="margin:10px 0 4px">อัปโหลดรูปใหม่</div>
       <div data-${key}-dz></div>
       <div class="desc" style="margin:10px 0 4px">หรือวาง URL รูป (ลิงก์สาธารณะ)</div>
       <input type="url" data-${key}-url placeholder="https://…" />
@@ -105,6 +108,24 @@ function openImageModal(page) {
   </div>`);
 
   const modal = openModal(`เปลี่ยนรูป: ${page.name}`, body);
+
+  const showCurrent = (key, url, previewClass) => {
+    const box = body.querySelector(`[data-${key}-current]`);
+    box.innerHTML = url
+      ? `<img class="img-prev ${previewClass}" style="margin-top:0" src="${esc(url)}" alt="รูปปัจจุบัน" />`
+      : '<span class="muted">ยังไม่มีรูป</span>';
+  };
+  const loadCurrentImages = async () => {
+    try {
+      const imgs = await Endpoints.pageImages(page.id);
+      showCurrent('cover', imgs.coverUrl, 'cover');
+      showCurrent('profile', imgs.profilePictureUrl, 'profile');
+    } catch {
+      showCurrent('cover', null, 'cover');
+      showCurrent('profile', null, 'profile');
+    }
+  };
+  loadCurrentImages();
 
   const wire = (key, { previewClass, uploadFile, setUrl, label }) => {
     const urlInput = body.querySelector(`[data-${key}-url]`);
@@ -126,6 +147,9 @@ function openImageModal(page) {
       if (file) await uploadFile(file);
       else await setUrl(url);
       toast(`อัปเดต${label}แล้ว`, 'ok');
+      dz.clear();
+      urlInput.value = '';
+      loadCurrentImages();
     });
   };
 
